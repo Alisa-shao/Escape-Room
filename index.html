@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Hypercube - 終極立體密室脫逃</title>
+    <style>
+        :root {
+            --primary: #00ffcc;
+            --alert: #ff3333;
+            --panel-bg: rgba(10, 11, 15, 0.85);
+            --cube-size: 90px; /* 稍微放大方塊，方便看清側面的字 */
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+        }
+
+        body {
+            background-color: #030305;
+            color: #d1f4ff;
+            font-family: 'Segoe UI', 'Courier New', monospace, "微軟正黑體";
+            overflow: hidden;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            perspective: 1200px; 
+        }
+
+        /* 3D 空間容器（隨滑鼠移動旋轉） */
+        #space-3d {
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            transform-style: preserve-3d;
+            transition: transform 0.1s ease-out;
+        }
+
+        /* 核心主視窗 */
+        .viewport-panel {
+            width: 95%;
+            max-width: 1100px;
+            height: 650px;
+            background: var(--panel-bg);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(0, 255, 204, 0.2);
+            border-radius: 16px;
+            box-shadow: 0 30px 70px rgba(0,0,0,0.9), 
+                        inset 0 0 40px rgba(0, 255, 204, 0.05);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            position: relative;
+            transform: translateZ(20px);
+        }
+
+        /* 頂部 HUD */
+        .hud {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 18px 30px;
+            background: rgba(5, 6, 8, 0.95);
+            border-bottom: 1px solid rgba(255,255,255,0.08);
+            z-index: 100;
+        }
+
+        .hud-title {
+            font-size: 1.1rem;
+            letter-spacing: 3px;
+            color: #8ab4f8;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .hud-timer {
+            font-size: 2.2rem;
+            font-family: 'Courier New', monospace;
+            font-weight: bold;
+            color: var(--alert);
+            text-shadow: 0 0 15px rgba(255, 51, 51, 0.6);
+            letter-spacing: 2px;
+        }
+
+        /* 3D 場景渲染區 */
+        .stage-view {
+            flex: 1;
+            position: relative;
+            background: radial-gradient(circle at 50% 50%, #101622 0%, #05070b 100%);
+            overflow: hidden;
+            transform-style: preserve-3d;
+        }
+
+        /* 網格環境背景 */
+        .grid-floor {
+            position: absolute;
+            width: 200%;
+            height: 200%;
+            top: -50%;
+            left: -50%;
+            background-image: 
+                linear-gradient(rgba(0, 255, 204, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 255, 204, 0.03) 1px, transparent 1px);
+            background-size: 50px 50px;
+            transform: rotateX(70deg) translateZ(-100px);
+            opacity: 0.5;
+            pointer-events: none;
+        }
+
+        /* ================= 核心：CSS 3D 實體方塊 ================= */
+        .cube-container {
+            position: absolute;
+            width: var(--cube-size);
+            height: var(--cube-size);
+            transform-style: preserve-3d;
+            cursor: pointer;
+            transition: top 0.5s, left 0.5s;
+        }
+
+        .cube {
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            transform-style: preserve-3d;
+            animation: floatRotation 12s infinite linear; /* 稍微調慢旋轉，讓玩家看得更清楚 */
+            transition: transform 0.3s;
+        }
+
+        .cube-container:active .cube {
+            transform: scale3d(0.85, 0.85, 0.85);
+        }
+
+        .cube-face {
+            position: absolute;
+            width: var(--cube-size);
+            height: var(--cube-size);
+            border: 2px solid rgba(0, 255, 234, 0.4);
+            background: rgba(10, 25, 40, 0.85);
+            box-shadow: inset 0 0 15px rgba(0, 255, 234, 0.2);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            font-size: 0.9rem; /* 調小字體以容納進位制標籤 */
+            color: var(--primary);
+            font-weight: bold;
+            text-shadow: 0 0 8px var(--primary);
+            transition: all 0.3s;
+            overflow: hidden;
+            text-align: center;
+            padding: 4px;
+        }
+
+        /* 標記面的小標題（例如：BIN, HEX） */
+        .face-label {
+            font-size: 0.6rem;
+            color: #5f7d9a;
+            margin-bottom: 2px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .cube-container:hover .cube-face {
+            border-color: #ffffff;
+            background: rgba(0, 255, 204, 0.2);
+            box-shadow: 0 0 20px rgba(0, 255, 204, 0.6), inset 0 0 15px rgba(255,255,255,0.3);
+        }
+
+        /* 六個面的 3D 位移配置 (根據尺寸的一半調整 translateZ) */
+        .face-front  { transform
